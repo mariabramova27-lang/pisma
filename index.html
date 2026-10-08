@@ -1,0 +1,649 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Письма для команд — Коворкинг-день</title>
+<style>
+* { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+:root {
+  --bg: #0a0e1a; --card: #1a2233; --text: #e8edf7; --dim: #8892a8;
+  --cyan: #00d4ff; --purple: #a855f7; --pink: #ec4899;
+  --mint: #10b981; --gold: #fbbf24; --coral: #ef4444;
+  --paper: #f5f0e1; --ink: #2c2418;
+}
+html, body {
+  font-family: 'Segoe UI', Arial, sans-serif;
+  background: var(--bg); color: var(--text);
+  min-height: 100vh; overflow-x: hidden; line-height: 1.6;
+  padding: 14px;
+}
+body::before {
+  content: ""; position: fixed; inset: 0;
+  background:
+    radial-gradient(circle at 20% 10%, rgba(0, 212, 255, 0.12) 0%, transparent 40%),
+    radial-gradient(circle at 80% 90%, rgba(168, 85, 247, 0.1) 0%, transparent 40%);
+  pointer-events: none; z-index: 0;
+}
+body::after {
+  content: ""; position: fixed; inset: 0;
+  background-image:
+    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px; pointer-events: none; z-index: 0;
+}
+.container { position: relative; z-index: 1; max-width: 900px; margin: 0 auto; }
+
+/* ЭКРАН ВЫБОРА */
+.chooser {
+  display: flex; flex-direction: column; align-items: center;
+  justify-content: center; min-height: 90vh; text-align: center;
+  gap: 24px;
+}
+.chooser-title {
+  font-size: clamp(28px, 6vw, 48px); font-weight: 900;
+  background: linear-gradient(135deg, var(--cyan), var(--purple), var(--pink));
+  background-size: 200% 200%;
+  -webkit-background-clip: text; background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientShift 4s ease infinite;
+  line-height: 1.1;
+}
+@keyframes gradientShift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+.chooser-sub { font-size: 16px; color: var(--dim); letter-spacing: 2px; text-transform: uppercase; font-weight: 700; }
+.chooser-icon { font-size: 80px; animation: float 3s ease-in-out infinite; }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+
+.envelope-grid {
+  display: grid; grid-template-columns: 1fr 1fr; gap: 20px;
+  width: 100%; max-width: 700px; margin-top: 20px;
+}
+@media (max-width: 600px) { .envelope-grid { grid-template-columns: 1fr; } }
+
+.envelope {
+  background: linear-gradient(135deg, var(--card), #0f1729);
+  border: 2px solid rgba(0, 212, 255, 0.3); border-radius: 20px;
+  padding: 30px 20px; cursor: pointer;
+  transition: all 0.3s ease; position: relative; overflow: hidden;
+}
+.envelope:hover {
+  transform: translateY(-8px);
+  border-color: var(--cyan);
+  box-shadow: 0 20px 50px rgba(0, 212, 255, 0.3);
+}
+.envelope::before {
+  content: ""; position: absolute; top: 0; left: 0;
+  width: 100%; height: 6px;
+  background: linear-gradient(90deg, var(--cyan), var(--purple));
+}
+.envelope.detective::before { background: linear-gradient(90deg, var(--cyan), var(--mint)); }
+.envelope.logician::before { background: linear-gradient(90deg, var(--purple), var(--pink)); }
+.envelope-emoji { font-size: 64px; margin-bottom: 12px; }
+.envelope-title { font-size: 22px; font-weight: 900; margin-bottom: 8px; }
+.envelope.detective .envelope-title { color: var(--cyan); }
+.envelope.logician .envelope-title { color: var(--purple); }
+.envelope-desc { font-size: 13px; color: var(--dim); margin-bottom: 16px; }
+.envelope-status {
+  display: inline-block; padding: 4px 12px; border-radius: 20px;
+  font-size: 11px; font-weight: 800; letter-spacing: 1px;
+  background: rgba(251, 191, 36, 0.15); color: var(--gold);
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+.envelope-status.read { background: rgba(16, 185, 129, 0.15); color: var(--mint); border-color: rgba(16, 185, 129, 0.3); }
+
+/* ЭКРАН ПИСЬМА */
+.letter-screen { display: none; padding: 20px 0; }
+.letter-screen.active { display: block; animation: fadeIn 0.6s ease; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+.back-btn {
+  background: transparent; border: 2px solid var(--cyan); color: var(--cyan);
+  padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 800;
+  cursor: pointer; margin-bottom: 20px; font-family: inherit;
+  display: inline-flex; align-items: center; gap: 6px;
+  transition: all 0.2s ease;
+}
+.back-btn:hover { background: rgba(0, 212, 255, 0.1); }
+
+.letter {
+  background: var(--paper);
+  color: var(--ink);
+  border-radius: 20px;
+  padding: 40px 36px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.6), inset 0 0 80px rgba(180, 160, 120, 0.1);
+  position: relative;
+  overflow: hidden;
+  min-height: 500px;
+  background-image:
+    repeating-linear-gradient(0deg, transparent, transparent 28px, rgba(180, 160, 120, 0.1) 28px, rgba(180, 160, 120, 0.1) 29px);
+  font-family: 'Georgia', 'Times New Roman', serif;
+  line-height: 1.8;
+}
+.letter::before {
+  content: ""; position: absolute; top: 0; left: 0; right: 0;
+  height: 40px;
+  background: linear-gradient(180deg, rgba(180, 160, 120, 0.15), transparent);
+}
+.letter::after {
+  content: ""; position: absolute; top: 20px; right: 20px;
+  width: 60px; height: 60px;
+  background: radial-gradient(circle, rgba(200, 150, 50, 0.4), transparent);
+  border-radius: 50%;
+}
+.letter-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding-bottom: 16px; margin-bottom: 24px;
+  border-bottom: 2px solid rgba(44, 36, 24, 0.2);
+}
+.letter-stamp {
+  font-size: 40px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+.letter-date {
+  font-size: 13px; color: var(--ink); opacity: 0.6;
+  font-style: italic;
+}
+.letter-greeting {
+  font-size: 22px; font-weight: 700; margin-bottom: 20px;
+  color: var(--ink);
+}
+.letter-body {
+  font-size: 16px; color: var(--ink);
+  min-height: 300px;
+}
+.letter-body p { margin-bottom: 16px; }
+.letter-body strong { color: #8b4513; }
+.letter-body em { color: #6b3410; font-style: italic; }
+.letter-body .highlight {
+  background: linear-gradient(180deg, transparent 60%, rgba(251, 191, 36, 0.4) 60%);
+  padding: 0 4px;
+  font-weight: 700;
+}
+.letter-signature {
+  margin-top: 30px; padding-top: 20px;
+  border-top: 2px solid rgba(44, 36, 24, 0.2);
+  font-style: italic; font-size: 18px;
+  color: var(--ink);
+}
+.letter-signature .name {
+  font-weight: 900; font-size: 22px; color: #8b4513;
+  font-style: normal;
+}
+
+/* КУРСОР ПЕЧАТНОЙ МАШИНКИ */
+.typewriter::after {
+  content: "▌";
+  color: #8b4513;
+  animation: blink 0.8s step-end infinite;
+}
+@keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+
+/* СЕКРЕТНЫЙ КОД */
+.secret-code {
+  margin-top: 24px; padding: 20px;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.1), rgba(168, 85, 247, 0.1));
+  border: 2px dashed var(--gold); border-radius: 16px;
+  text-align: center; display: none;
+}
+.secret-code.show { display: block; animation: pop 0.6s ease; }
+@keyframes pop { 0% { transform: scale(0); } 60% { transform: scale(1.1); } 100% { transform: scale(1); } }
+.secret-code-label { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 2px; font-weight: 800; margin-bottom: 8px; }
+.secret-code-value {
+  font-size: 36px; font-weight: 900; color: var(--gold);
+  letter-spacing: 8px; font-family: 'Courier New', monospace;
+  text-shadow: 0 0 30px rgba(251, 191, 36, 0.6);
+  margin: 10px 0;
+}
+.secret-code-hint { font-size: 13px; color: var(--dim); font-style: italic; }
+
+/* КНОПКИ ДЕЙСТВИЙ */
+.letter-actions {
+  display: flex; gap: 12px; flex-wrap: wrap;
+  margin-top: 24px; justify-content: center;
+}
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  background: linear-gradient(135deg, var(--cyan), #0099cc); color: #001a22;
+  padding: 14px 28px; border-radius: 60px; font-size: 15px; font-weight: 900;
+  border: none; cursor: pointer; font-family: inherit; min-height: 48px;
+  box-shadow: 0 6px 0 #006680, 0 8px 20px rgba(0, 212, 255, 0.4);
+  transition: all 0.1s ease; text-transform: uppercase; letter-spacing: 0.5px;
+}
+.btn:hover { transform: translateY(-2px); box-shadow: 0 8px 0 #006680, 0 12px 28px rgba(0, 212, 255, 0.6); }
+.btn:active { transform: translateY(4px); box-shadow: 0 2px 0 #006680; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none !important; }
+.btn-gold { background: linear-gradient(135deg, var(--gold), #d97706); color: #1a0f00; box-shadow: 0 6px 0 #92400e, 0 8px 20px rgba(251, 191, 36, 0.4); }
+.btn-gold:hover { box-shadow: 0 8px 0 #92400e, 0 12px 28px rgba(251, 191, 36, 0.6); }
+.btn-gold:active { box-shadow: 0 2px 0 #92400e; }
+.btn-mint { background: linear-gradient(135deg, var(--mint), #059669); color: #001a22; box-shadow: 0 6px 0 #064e3b, 0 8px 20px rgba(16, 185, 129, 0.4); }
+.btn-mint:hover { box-shadow: 0 8px 0 #064e3b, 0 12px 28px rgba(16, 185, 129, 0.6); }
+.btn-mint:active { box-shadow: 0 2px 0 #064e3b; }
+
+/* ЧАСТИЦЫ */
+.particle {
+  position: fixed; pointer-events: none; z-index: 9999;
+  font-size: 24px; animation: particleFloat 2s ease-out forwards;
+}
+@keyframes particleFloat {
+  0% { transform: translate(0, 0) scale(1); opacity: 1; }
+  100% { transform: translate(var(--dx), var(--dy)) scale(0); opacity: 0; }
+}
+
+/* ИНДИКАТОР ПРОГРЕССА ПИСЬМА */
+.reading-progress {
+  height: 4px; background: rgba(255, 255, 255, 0.1);
+  border-radius: 2px; margin-bottom: 20px; overflow: hidden;
+}
+.reading-progress .fill {
+  height: 100%; background: linear-gradient(90deg, var(--cyan), var(--gold));
+  border-radius: 2px; width: 0%; transition: width 0.2s linear;
+}
+
+/* ПОДСКАЗКА ПРО СВАЙП */
+.swipe-hint {
+  text-align: center; font-size: 12px; color: var(--dim);
+  margin-top: 14px; font-style: italic;
+}
+
+@media (max-width: 600px) {
+  .letter { padding: 26px 20px; }
+  .letter-greeting { font-size: 18px; }
+  .letter-body { font-size: 15px; }
+  .secret-code-value { font-size: 28px; letter-spacing: 6px; }
+  .btn { padding: 12px 20px; font-size: 13px; }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- ЭКРАН ВЫБОРА -->
+  <div class="chooser" id="chooser">
+    <div class="chooser-icon">✉️</div>
+    <h1 class="chooser-title">Письма для команд</h1>
+    <p class="chooser-sub">Коворкинг-день · Модуль 1</p>
+    <p style="color: var(--dim); max-width: 500px; font-size: 15px;">
+      Профессор Мягкий отправил каждой команде секретное письмо.
+      Выбери своё — и узнай, какое задание тебя ждёт.
+    </p>
+
+    <div class="envelope-grid">
+      <div class="envelope detective" onclick="openLetter('detective')">
+        <div class="envelope-emoji">🔍</div>
+        <div class="envelope-title">Команда «Детективы»</div>
+        <div class="envelope-desc">Числовой ребус · Логика · Расследование</div>
+        <div class="envelope-status" id="status-detective">📩 Не прочитано</div>
+      </div>
+      <div class="envelope logician" onclick="openLetter('logician')">
+        <div class="envelope-emoji">🧩</div>
+        <div class="envelope-title">Команда «Логики»</div>
+        <div class="envelope-desc">Магический квадрат · Анализ · Тайна форточки</div>
+        <div class="envelope-status" id="status-logician">📩 Не прочитано</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ПИСЬМО 1. ДЕТЕКТИВЫ -->
+  <div class="letter-screen" id="letter-detective">
+    <button class="back-btn" onclick="backToChooser()">← К выбору письма</button>
+    <div class="reading-progress"><div class="fill" id="progress-detective"></div></div>
+
+    <div class="letter">
+      <div class="letter-header">
+        <div class="letter-stamp">🕵️</div>
+        <div class="letter-date">Единая Школа Будущего · Сегодня</div>
+      </div>
+
+      <div class="letter-greeting">Дорогая команда «Детективы»!</div>
+
+      <div class="letter-body">
+        <p id="body-detective" class="typewriter"></p>
+      </div>
+
+      <div class="letter-signature" id="signature-detective" style="display:none;">
+        Твой наставник,<br>
+        <span class="name">🧙‍♂️ Профессор Мягкий</span>
+      </div>
+    </div>
+
+    <div class="secret-code" id="code-detective">
+      <div class="secret-code-label">🔐 Секретный код команды</div>
+      <div class="secret-code-value">КОТ</div>
+      <div class="secret-code-hint">Назови этот код наставнику, чтобы получить своё первое задание</div>
+    </div>
+
+    <div class="letter-actions" id="actions-detective" style="display:none;">
+      <button class="btn btn-gold" onclick="acceptMission('detective')">🎯 Принять вызов</button>
+      <button class="btn" onclick="backToChooser()">← Выбрать другое</button>
+    </div>
+  </div>
+
+  <!-- ПИСЬМО 2. ЛОГИКИ -->
+  <div class="letter-screen" id="letter-logician">
+    <button class="back-btn" onclick="backToChooser()">← К выбору письма</button>
+    <div class="reading-progress"><div class="fill" id="progress-logician"></div></div>
+
+    <div class="letter">
+      <div class="letter-header">
+        <div class="letter-stamp">🧠</div>
+        <div class="letter-date">Единая Школа Будущего · Сегодня</div>
+      </div>
+
+      <div class="letter-greeting">Дорогая команда «Логики»!</div>
+
+      <div class="letter-body">
+        <p id="body-logician" class="typewriter"></p>
+      </div>
+
+      <div class="letter-signature" id="signature-logician" style="display:none;">
+        Твой наставник,<br>
+        <span class="name">🦉 Логик</span>
+      </div>
+    </div>
+
+    <div class="secret-code" id="code-logician">
+      <div class="secret-code-label">🔐 Секретный код команды</div>
+      <div class="secret-code-value">15</div>
+      <div class="secret-code-hint">Назови этот код наставнику, чтобы получить своё первое задание</div>
+    </div>
+
+    <div class="letter-actions" id="actions-logician" style="display:none;">
+      <button class="btn btn-gold" onclick="acceptMission('logician')">🎯 Принять вызов</button>
+      <button class="btn" onclick="backToChooser()">← Выбрать другое</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ============================================================
+// ТЕКСТЫ ПИСЕМ
+// ============================================================
+const LETTERS = {
+  detective: {
+    text: `Знаешь, я давно наблюдаю за тобой. Ты замечаешь то, что другие пропускают. Ты видишь закономерности там, где остальные видят случайность. Именно такие люди нужны в Единой Школе Будущего.
+
+Сегодня ночью произошло странное событие: <span class="highlight">кто-то спрятал код доступа к Кристаллу Знаний</span> за числовым ребусом. Я нашёл обрывок записки: там было написано «КОТ + ТОК = 1111». И больше ничего.
+
+Твоя задача — расшифровать этот ребус. Найди все возможные значения слова КОТ. Помни: в ребусах за одинаковыми буквами стоят одинаковые цифры, а за разными — разные.
+
+Действуй как настоящий детектив: рассуждай, проверяй гипотезы, отбрасывай невозможное. У тебя есть команда, которая поддержит. Работайте вместе, обсуждайте, спорьте — истина рождается в диалоге.
+
+Как только найдёшь решение — приходи на общий сбор. Там мы встретимся с командой «Логики» и вместе раскроем тайну разбитой форточки.`,
+    duration: 60 // ms per char
+  },
+  logician: {
+    text: `Приветствую тебя, юный мыслитель. Я вижу в тебе задатки настоящего логика — того, кто умеет видеть порядок в хаосе и находить закономерности там, где другие видят случайность.
+
+Сегодня Единая Школа Будущего столкнулась с загадкой: <span class="highlight">магический квадрат потерял свои числа</span>. Раньше в нём были числа от 1 до 9, и сумма по строкам, столбцам и диагоналям всегда равнялась 15. Но кто-то стёр их, и теперь квадрат пуст.
+
+Твоя задача — восстановить магический квадрат. Помни: центр всегда 5, а противоположные пары дают 10. Это ключ к решению.
+
+Действуй как настоящий логик: анализируй, сравнивай, делай выводы. Работайте в команде, обсуждайте, предлагайте идеи. Каждый из вас может увидеть то, что не заметил другой.
+
+Как только соберёшь квадрат — приходи на общий сбор. Там мы объединим силы с командой «Детективы» и раскроем тайну разбитой форточки.`,
+    duration: 60
+  }
+};
+
+// ============================================================
+// СОСТОЯНИЕ
+// ============================================================
+let state = {
+  detective: { read: false, accepted: false },
+  logician: { read: false, accepted: false }
+};
+
+// ============================================================
+// СОХРАНЕНИЕ
+// ============================================================
+function loadState() {
+  try {
+    const saved = localStorage.getItem('letters_state');
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      state = { ...state, ...parsed };
+      if (state.detective.read) {
+        document.getElementById('status-detective').textContent = '✅ Прочитано';
+        document.getElementById('status-detective').classList.add('read');
+      }
+      if (state.logician.read) {
+        document.getElementById('status-logician').textContent = '✅ Прочитано';
+        document.getElementById('status-logician').classList.add('read');
+      }
+    }
+  } catch (e) { /* ignore */ }
+}
+function saveState() {
+  try { localStorage.setItem('letters_state', JSON.stringify(state)); } catch (e) { /* ignore */ }
+}
+
+// ============================================================
+// ОТКРЫТИЕ ПИСЬМА
+// ============================================================
+let typingInterval = null;
+let currentTyping = null;
+
+function openLetter(type) {
+  document.getElementById('chooser').style.display = 'none';
+  document.querySelectorAll('.letter-screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('letter-' + type).classList.add('active');
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Сброс предыдущей печати
+  if (typingInterval) clearInterval(typingInterval);
+  document.getElementById('body-' + type).textContent = '';
+  document.getElementById('signature-' + type).style.display = 'none';
+  document.getElementById('code-' + type).classList.remove('show');
+  document.getElementById('actions-' + type).style.display = 'none';
+
+  // Запуск печатной машинки
+  startTypewriter(type);
+}
+
+function startTypewriter(type) {
+  const fullText = LETTERS[type].text;
+  const speed = LETTERS[type].duration;
+  const target = document.getElementById('body-' + type);
+  const progressBar = document.getElementById('progress-' + type);
+  let i = 0;
+
+  // Парсим HTML-теги (упрощённо: сохраняем теги, печатаем посимвольно)
+  const parser = new DOMParser();
+  const doc = parser.parseFromString('<div>' + fullText + '</div>', 'text/html');
+  const plainText = doc.body.textContent;
+
+  // Собираем карту: где в plainText находятся теги
+  // Простой подход: разбиваем fullText на токены (теги и символы)
+  const tokens = [];
+  let j = 0;
+  while (j < fullText.length) {
+    if (fullText[j] === '<') {
+      const end = fullText.indexOf('>', j);
+      tokens.push({ type: 'tag', value: fullText.slice(j, end + 1) });
+      j = end + 1;
+    } else {
+      tokens.push({ type: 'char', value: fullText[j] });
+      j++;
+    }
+  }
+
+  let currentHTML = '';
+  let tokenIndex = 0;
+  let charCount = 0;
+  const totalChars = tokens.filter(t => t.type === 'char').length;
+
+  typingInterval = setInterval(() => {
+    if (tokenIndex >= tokens.length) {
+      clearInterval(typingInterval);
+      typingInterval = null;
+
+      // Показываем подпись, код и действия
+      setTimeout(() => {
+        document.getElementById('signature-' + type).style.display = 'block';
+        document.getElementById('code-' + type).classList.add('show');
+        document.getElementById('actions-' + type).style.display = 'flex';
+
+        // Помечаем как прочитанное
+        state[type].read = true;
+        saveState();
+
+        const statusEl = document.getElementById('status-' + type);
+        statusEl.textContent = '✅ Прочитано';
+        statusEl.classList.add('read');
+
+        spawnParticles(type);
+      }, 400);
+      return;
+    }
+
+    const token = tokens[tokenIndex];
+    if (token.type === 'tag') {
+      currentHTML += token.value;
+      tokenIndex++;
+      // Теги не считаем, но сразу продолжаем
+      // Небольшая задержка, чтобы не слипалось
+      return;
+    }
+
+    // Символ
+    currentHTML += token.value;
+    tokenIndex++;
+    charCount++;
+
+    target.innerHTML = currentHTML + '<span class="typewriter-cursor">▌</span>';
+
+    // Прогресс
+    progressBar.style.width = ((charCount / totalChars) * 100) + '%';
+
+    // Автоскролл внутри письма не нужен — письмо прокручивается целиком
+  }, speed);
+}
+
+// ============================================================
+// ПРИНЯТИЕ ВЫЗОВА
+// ============================================================
+function acceptMission(type) {
+  state[type].accepted = true;
+  saveState();
+
+  const names = {
+    detective: '🔍 Команда «Детективы»',
+    logician: '🧩 Команда «Логики»'
+  };
+
+  const codes = {
+    detective: 'КОТ',
+    logician: '15'
+  };
+
+  // Эффект печати
+  spawnConfetti(30);
+
+  // Всплывающее уведомление
+  const notif = document.createElement('div');
+  notif.style.cssText = `
+    position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+    background: linear-gradient(135deg, var(--gold), #d97706);
+    color: #1a0f00; padding: 16px 32px; border-radius: 60px;
+    font-weight: 900; font-size: 16px; z-index: 10000;
+    box-shadow: 0 12px 30px rgba(251, 191, 36, 0.6);
+    animation: slideDown 0.5s ease;
+    text-align: center; max-width: 90%;
+  `;
+  notif.innerHTML = `🎯 ${names[type]} приняла вызов!<br><span style="font-size: 13px;">Код: <strong>${codes[type]}</strong></span>`;
+  document.body.appendChild(notif);
+  setTimeout(() => notif.remove(), 3500);
+
+  // Кнопка становится "Вызов принят"
+  const btn = event.target;
+  btn.textContent = '✅ Вызов принят';
+  btn.disabled = true;
+  btn.classList.remove('btn-gold');
+  btn.classList.add('btn-mint');
+}
+
+// ============================================================
+// ВОЗВРАТ
+// ============================================================
+function backToChooser() {
+  if (typingInterval) clearInterval(typingInterval);
+  document.querySelectorAll('.letter-screen').forEach(s => s.classList.remove('active'));
+  document.getElementById('chooser').style.display = 'flex';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ============================================================
+// ЭФФЕКТЫ
+// ============================================================
+function spawnParticles(type) {
+  const emojis = type === 'detective' ? ['🔍', '🔎', '✨', '🕵️'] : ['🧩', '🧠', '✨', '🦉'];
+  for (let i = 0; i < 15; i++) {
+    const p = document.createElement('div');
+    p.className = 'particle';
+    p.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    p.style.left = (Math.random() * 100) + '%';
+    p.style.top = (Math.random() * 40 + 30) + '%';
+    p.style.setProperty('--dx', (Math.random() * 200 - 100) + 'px');
+    p.style.setProperty('--dy', (Math.random() * -200 - 50) + 'px');
+    p.style.fontSize = (Math.random() * 20 + 18) + 'px';
+    document.body.appendChild(p);
+    setTimeout(() => p.remove(), 2000);
+  }
+}
+
+function spawnConfetti(count = 20) {
+  const emojis = ['🎉', '🎊', '⭐', '🪙', '✨', '🏆'];
+  for (let i = 0; i < count; i++) {
+    const el = document.createElement('div');
+    el.className = 'particle';
+    el.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+    el.style.left = Math.random() * 100 + '%';
+    el.style.top = '-30px';
+    el.style.setProperty('--dx', (Math.random() * 100 - 50) + 'px');
+    el.style.setProperty('--dy', '100vh');
+    el.style.animationDelay = Math.random() * 0.5 + 's';
+    el.style.animationDuration = (1.5 + Math.random()) + 's';
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 3000);
+  }
+}
+
+// ============================================================
+// КНОПКА ПРОПУСТИТЬ ПЕЧАТЬ
+// ============================================================
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (typingInterval) {
+      clearInterval(typingInterval);
+      typingInterval = null;
+      // Мгновенно показать весь текст
+      const active = document.querySelector('.letter-screen.active');
+      if (active) {
+        const type = active.id.replace('letter-', '');
+        const target = document.getElementById('body-' + type);
+        target.innerHTML = LETTERS[type].text;
+        document.getElementById('progress-' + type).style.width = '100%';
+        document.getElementById('signature-' + type).style.display = 'block';
+        document.getElementById('code-' + type).classList.add('show');
+        document.getElementById('actions-' + type).style.display = 'flex';
+        state[type].read = true;
+        saveState();
+        document.getElementById('status-' + type).textContent = '✅ Прочитано';
+        document.getElementById('status-' + type).classList.add('read');
+      }
+    }
+  }
+});
+
+// ============================================================
+// ИНИЦИАЛИЗАЦИЯ
+// ============================================================
+loadState();
+
+console.log('%c✉️ Письма для команд загружены!', 'color:#00d4ff;font-size:16px;font-weight:bold');
+console.log('%cНажми ESC, чтобы пропустить печать', 'color:#fbbf24;font-size:13px');
+</script>
+</body>
+</html>
